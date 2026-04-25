@@ -46,6 +46,8 @@ FRONTEND_ORIGIN=https://your-vercel-app.vercel.app
 
 ## Deployment
 
+For the full production checklist, see `DEPLOYMENT.md`.
+
 ### Vercel Frontend
 
 1. Import the repository into Vercel.

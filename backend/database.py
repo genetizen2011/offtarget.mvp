@@ -13,7 +13,15 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True) if DATABASE_URL else None
+
+def normalize_database_url(url: str | None) -> str | None:
+    if url and url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+engine_url = normalize_database_url(DATABASE_URL)
+engine = create_engine(engine_url, pool_pre_ping=True) if engine_url else None
 SessionLocal = (
     sessionmaker(autocommit=False, autoflush=False, bind=engine) if engine else None
 )

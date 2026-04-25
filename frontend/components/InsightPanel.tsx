@@ -1,13 +1,24 @@
-import type { AnalyzeResponse } from "@/lib/api";
+import type { AIExplanation, AnalyzeResponse, ExplanationMode } from "@/lib/api";
 import Link from "next/link";
 import Tooltip from "./Tooltip";
 
 type InsightPanelProps = {
   results: AnalyzeResponse | null;
   isLoading: boolean;
+  explanationMode: ExplanationMode;
+  aiExplanation: AIExplanation | null;
+  aiError: string;
+  isAiLoading: boolean;
 };
 
-export default function InsightPanel({ results, isLoading }: InsightPanelProps) {
+export default function InsightPanel({
+  results,
+  isLoading,
+  explanationMode,
+  aiExplanation,
+  aiError,
+  isAiLoading,
+}: InsightPanelProps) {
   const bestGuide = results?.best_guide ?? null;
 
   let insight = "Run an analysis to generate design rationale and risk notes.";
@@ -57,6 +68,14 @@ export default function InsightPanel({ results, isLoading }: InsightPanelProps) 
     ];
   }
 
+  const aiKeyPoints =
+    aiExplanation?.key_points ?? aiExplanation?.recommended_next_steps ?? [];
+  const aiWarnings = [
+    ...(aiExplanation?.warnings ?? []),
+    ...(aiExplanation?.risk_assessment ? [aiExplanation.risk_assessment] : []),
+    ...(aiExplanation?.limitations ? [aiExplanation.limitations] : []),
+  ];
+
   return (
     <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-panel">
       <div className="mb-5 border-b border-gray-100 pb-5">
@@ -79,6 +98,86 @@ export default function InsightPanel({ results, isLoading }: InsightPanelProps) 
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 md:col-span-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-950">
+                  AI explanation
+                </p>
+                <p className="mt-1 text-xs font-medium uppercase tracking-wide text-blue-700">
+                  {explanationMode} mode
+                </p>
+              </div>
+              {isAiLoading ? (
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700">
+                  Generating...
+                </span>
+              ) : null}
+            </div>
+
+            {isAiLoading ? (
+              <div className="mt-4 space-y-3">
+                <div className="h-4 animate-pulse rounded bg-blue-100" />
+                <div className="h-4 w-5/6 animate-pulse rounded bg-blue-100" />
+                <div className="h-16 animate-pulse rounded-xl bg-blue-100" />
+              </div>
+            ) : aiError ? (
+              <div className="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm leading-6 text-yellow-800">
+                AI explanation is unavailable: {aiError}
+              </div>
+            ) : aiExplanation ? (
+              <div className="mt-4 space-y-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    Explanation
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-blue-950">
+                    {aiExplanation.summary ??
+                      aiExplanation.best_guide_explanation ??
+                      "AI explanation generated for this analysis."}
+                  </p>
+                  {aiExplanation.best_guide_explanation &&
+                  aiExplanation.summary ? (
+                    <p className="mt-2 text-sm leading-6 text-blue-950">
+                      {aiExplanation.best_guide_explanation}
+                    </p>
+                  ) : null}
+                </div>
+
+                {aiKeyPoints.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      Key points
+                    </p>
+                    <ul className="mt-2 space-y-2 text-sm leading-6 text-blue-950">
+                      {aiKeyPoints.map((point) => (
+                        <li key={point}>- {point}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {aiWarnings.length > 0 ? (
+                  <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-yellow-800">
+                      Warnings
+                    </p>
+                    <ul className="mt-2 space-y-2 text-sm leading-6 text-yellow-900">
+                      {aiWarnings.map((warning) => (
+                        <li key={warning}>- {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm leading-6 text-blue-900">
+                Click Generate AI Insight after analysis to request an
+                AI-assisted explanation.
+              </p>
+            )}
+          </div>
+
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 md:col-span-2">
             <p className="text-sm font-semibold text-gray-900">
               Best guide selection

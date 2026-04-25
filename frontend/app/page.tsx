@@ -6,7 +6,15 @@ import ResultDashboard from "@/components/ResultDashboard";
 import SequenceEditor from "@/components/SequenceEditor";
 import {
   analyzeSequence,
+  clearAuthToken,
+  explainAnalysis,
+  getAuthToken,
+  getCurrentUser,
+  saveAnalysisToBackend,
+  type AIExplanation,
   type AnalyzeResponse,
+  type AuthUser,
+  type ExplanationMode,
   type SavedAnalysis,
 } from "@/lib/api";
 
@@ -81,6 +89,12 @@ export default function Home() {
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+  const [explanationMode, setExplanationMode] =
+    useState<ExplanationMode>("student");
+  const [aiExplanation, setAiExplanation] = useState<AIExplanation | null>(null);
+  const [aiError, setAiError] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -117,6 +131,33 @@ export default function Home() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedAnalyses));
   }, [isHistoryLoaded, savedAnalyses]);
 
+  useEffect(() => {
+    if (!getAuthToken()) return;
+
+    getCurrentUser()
+      .then(setCurrentUser)
+      .catch(() => {
+        clearAuthToken();
+        setCurrentUser(null);
+      });
+  }, []);
+
+  useEffect(() => {
+    const pendingReload = window.localStorage.getItem("offtarget.pendingReload");
+    if (!pendingReload) return;
+
+    try {
+      const parsed = JSON.parse(pendingReload) as {
+        sequence: string;
+        results: AnalyzeResponse;
+      };
+      setSequence(parsed.sequence);
+      setResults(parsed.results);
+    } finally {
+      window.localStorage.removeItem("offtarget.pendingReload");
+    }
+  }, []);
+
   async function handleAnalyze() {
     if (!validation.isValid) return;
 
@@ -126,6 +167,8 @@ export default function Home() {
     try {
       const response = await analyzeSequence(sequence);
       setResults(response);
+      setAiExplanation(null);
+      setAiError("");
     } catch (apiError) {
       setError(
         apiError instanceof Error
@@ -140,16 +183,41 @@ export default function Home() {
   function handleClear() {
     setSequence("");
     setResults(null);
+    setAiExplanation(null);
+    setAiError("");
     setError("");
   }
 
   function handleLoadExample() {
     setSequence(EXAMPLE_SEQUENCE);
     setResults(null);
+    setAiExplanation(null);
+    setAiError("");
     setError("");
   }
 
-  function handleSaveAnalysis() {
+  async function handleGenerateExplanation() {
+    if (!results) return;
+
+    setAiError("");
+    setIsAiLoading(true);
+
+    try {
+      const explanation = await explainAnalysis(explanationMode, results);
+      setAiExplanation(explanation);
+    } catch (apiError) {
+      setAiExplanation(null);
+      setAiError(
+        apiError instanceof Error
+          ? apiError.message
+          : "Unable to generate AI explanation.",
+      );
+    } finally {
+      setIsAiLoading(false);
+    }
+  }
+
+  async function handleSaveAnalysis() {
     if (!results) return;
 
     const saved: SavedAnalysis = {
@@ -160,7 +228,21 @@ export default function Home() {
     };
 
     setSavedAnalyses((current) => [saved, ...current].slice(0, 12));
-    setError("");
+
+    if (currentUser) {
+      try {
+        await saveAnalysisToBackend(sequence, results);
+        setError("");
+      } catch (apiError) {
+        setError(
+          apiError instanceof Error
+            ? `Saved locally, but cloud save failed: ${apiError.message}`
+            : "Saved locally, but cloud save failed.",
+        );
+      }
+    } else {
+      setError("Saved locally. Log in to sync analyses to your account.");
+    }
   }
 
   function handleReloadAnalysis(analysis: SavedAnalysis) {
@@ -210,6 +292,21 @@ export default function Home() {
             <a className="rounded-full px-4 py-2 transition hover:bg-white" href="#saved">
               Saved
             </a>
+            <a className="rounded-full px-4 py-2 transition hover:bg-white" href="/history">
+              History
+            </a>
+            {currentUser ? (
+              <span className="rounded-full bg-white px-4 py-2 text-gray-700 shadow-sm">
+                {currentUser.email}
+              </span>
+            ) : (
+              <a
+                className="rounded-full bg-blue-600 px-4 py-2 text-white shadow-sm"
+                href="/login"
+              >
+                Log in
+              </a>
+            )}
           </div>
         </div>
       </nav>
@@ -273,6 +370,12 @@ export default function Home() {
             results={results}
             isLoading={isLoading}
             compareAnalyses={compareAnalyses}
+            explanationMode={explanationMode}
+            aiExplanation={aiExplanation}
+            aiError={aiError}
+            isAiLoading={isAiLoading}
+            onExplanationModeChange={setExplanationMode}
+            onGenerateExplanation={handleGenerateExplanation}
             onSaveAnalysis={handleSaveAnalysis}
             onExportCsv={() => exportGuides(results)}
             canSave={Boolean(results) && !isLoading}

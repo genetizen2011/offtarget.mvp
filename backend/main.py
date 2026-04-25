@@ -2,16 +2,51 @@ from __future__ import annotations
 
 import os
 import re
+import json
+import hashlib
 from collections import Counter
-from typing import Literal
+from typing import Any, Literal
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from openai import OpenAI, OpenAIError
 from pydantic import BaseModel, Field
 
+from database import init_db
+from routers.analyses import router as analyses_router
+from routers.auth import router as auth_router
+
+
+load_dotenv()
 
 VALID_SEQUENCE = re.compile(r"^[ATCGU]+$")
 RiskLevel = Literal["low", "medium", "high"]
+ExplanationMode = Literal["student", "researcher"]
+
+AI_SYSTEM_PROMPT = """
+You are a molecular biology expert explaining CRISPR-Cas9 guide RNA analysis.
+You must be scientifically accurate, concise, and transparent about uncertainty.
+
+Use only the guide metrics provided by the API. Do not invent genome-wide
+off-target results, clinical claims, organism-specific claims, or experimental
+validation outcomes.
+
+Adapt the explanation to the requested mode:
+- student: use accessible language while preserving correct terms.
+- researcher: use more technical language and emphasize design caveats.
+
+Return only valid JSON with this exact shape:
+{
+  "summary": "short overall interpretation",
+  "best_guide_explanation": "why the best guide was selected using score, GC, PAM, and risk",
+  "gc_reasoning": "brief interpretation of GC content",
+  "risk_assessment": "brief interpretation of off-target or sequence-risk signals",
+  "recommended_next_steps": ["step 1", "step 2", "step 3"],
+  "limitations": "what this heuristic analysis cannot conclude"
+}
+"""
+AI_EXPLANATION_CACHE: dict[str, dict[str, Any]] = {}
 
 
 app = FastAPI(
@@ -37,6 +72,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
+app.include_router(analyses_router)
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+
 
 class AnalyzeRequest(BaseModel):
     sequence: str = Field(..., min_length=1)
@@ -55,6 +98,16 @@ class Guide(BaseModel):
 class AnalyzeResponse(BaseModel):
     guides: list[Guide]
     best_guide: Guide | None
+
+
+class AIExplainRequest(BaseModel):
+    mode: ExplanationMode = "student"
+    guides: list[Guide] = Field(default_factory=list)
+    best_guide: Guide | None = None
+
+
+class AIExplainResponse(BaseModel):
+    explanation: dict[str, Any]
 
 
 def normalize_sequence(sequence: str) -> str:
@@ -155,6 +208,43 @@ def find_guides(sequence: str) -> list[Guide]:
     return guides
 
 
+def get_openai_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "message": "OPENAI_API_KEY is not configured.",
+                "code": "OPENAI_NOT_CONFIGURED",
+            },
+        )
+
+    return OpenAI(api_key=api_key)
+
+
+def build_ai_prompt(payload: AIExplainRequest) -> str:
+    guide_payload = {
+        "mode": payload.mode,
+        "guides": [guide.model_dump() for guide in payload.guides],
+        "best_guide": payload.best_guide.model_dump() if payload.best_guide else None,
+    }
+
+    return (
+        "Explain this CRISPR guide RNA analysis result as JSON.\n\n"
+        f"Input data:\n{json.dumps(guide_payload, indent=2)}"
+    )
+
+
+def ai_cache_key(payload: AIExplainRequest) -> str:
+    cache_payload = {
+        "mode": payload.mode,
+        "guides": [guide.model_dump() for guide in payload.guides],
+        "best_guide": payload.best_guide.model_dump() if payload.best_guide else None,
+    }
+    serialized = json.dumps(cache_payload, sort_keys=True)
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -173,3 +263,67 @@ def analyze(payload: AnalyzeRequest) -> AnalyzeResponse:
     )
 
     return AnalyzeResponse(guides=guides, best_guide=best_guide)
+
+
+@app.post("/ai/explain", response_model=AIExplainResponse)
+def explain_with_ai(payload: AIExplainRequest) -> AIExplainResponse:
+    if not payload.guides and payload.best_guide is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Provide guides or best_guide to explain.",
+                "code": "EMPTY_ANALYSIS",
+            },
+        )
+
+    cache_key = ai_cache_key(payload)
+    cached = AI_EXPLANATION_CACHE.get(cache_key)
+    if cached is not None:
+        return AIExplainResponse(explanation=cached)
+
+    client = get_openai_client()
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": AI_SYSTEM_PROMPT},
+                {"role": "user", "content": build_ai_prompt(payload)},
+            ],
+            temperature=0.2,
+            max_tokens=500,
+        )
+    except OpenAIError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "OpenAI explanation request failed.",
+                "code": "OPENAI_REQUEST_FAILED",
+            },
+        ) from exc
+
+    content = completion.choices[0].message.content
+    if not content:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "OpenAI returned an empty explanation.",
+                "code": "OPENAI_EMPTY_RESPONSE",
+            },
+        )
+
+    try:
+        explanation = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "OpenAI returned invalid JSON.",
+                "code": "OPENAI_INVALID_JSON",
+            },
+        ) from exc
+
+    AI_EXPLANATION_CACHE[cache_key] = explanation
+    return AIExplainResponse(explanation=explanation)

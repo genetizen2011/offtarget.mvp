@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnalyzeResponse, SavedAnalysis } from "@/lib/api";
+import type { AIExplanation, ExplanationMode } from "@/lib/api";
 import CompareView from "./CompareView";
 import GuideTable from "./GuideTable";
 import InsightPanel from "./InsightPanel";
@@ -10,6 +11,12 @@ type ResultDashboardProps = {
   results: AnalyzeResponse | null;
   isLoading: boolean;
   compareAnalyses: SavedAnalysis[];
+  explanationMode: ExplanationMode;
+  aiExplanation: AIExplanation | null;
+  aiError: string;
+  isAiLoading: boolean;
+  onExplanationModeChange: (mode: ExplanationMode) => void;
+  onGenerateExplanation: () => void;
   onSaveAnalysis: () => void;
   onExportCsv: () => void;
   canSave: boolean;
@@ -19,6 +26,12 @@ export default function ResultDashboard({
   results,
   isLoading,
   compareAnalyses,
+  explanationMode,
+  aiExplanation,
+  aiError,
+  isAiLoading,
+  onExplanationModeChange,
+  onGenerateExplanation,
   onSaveAnalysis,
   onExportCsv,
   canSave,
@@ -42,6 +55,27 @@ export default function ResultDashboard({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700">
+              Mode
+              <select
+                value={explanationMode}
+                onChange={(event) =>
+                  onExplanationModeChange(event.target.value as ExplanationMode)
+                }
+                className="bg-transparent text-sm font-semibold text-blue-700 outline-none"
+              >
+                <option value="student">Student</option>
+                <option value="researcher">Researcher</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={onGenerateExplanation}
+              disabled={!results || isAiLoading}
+              className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              {isAiLoading ? "Generating..." : "Generate AI Insight"}
+            </button>
             <button
               type="button"
               onClick={onSaveAnalysis}
@@ -64,7 +98,14 @@ export default function ResultDashboard({
 
       <SummaryPanel results={results} isLoading={isLoading} />
       <GuideTable guides={results?.guides ?? []} isLoading={isLoading} />
-      <InsightPanel results={results} isLoading={isLoading} />
+      <InsightPanel
+        results={results}
+        isLoading={isLoading}
+        explanationMode={explanationMode}
+        aiExplanation={aiExplanation}
+        aiError={aiError}
+        isAiLoading={isAiLoading}
+      />
       <CompareView analyses={compareAnalyses} />
     </div>
   );

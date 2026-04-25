@@ -1,0 +1,25 @@
+{
+  "title": "PAM (NGG)",
+  "summary": "For Streptococcus pyogenes Cas9, the canonical PAM is NGG, where N can be any nucleotide and GG is required immediately downstream of the target protospacer on the non-target strand.",
+  "sections": [
+    {
+      "heading": "Why PAM matters",
+      "content": "Cas9 first recognizes PAM sequences before testing guide RNA complementarity. This reduces the search space and prevents cleavage of the CRISPR array in the source organism, where the spacer lacks the adjacent genomic PAM."
+    },
+    {
+      "heading": "Design implication",
+      "content": "For a 20 nucleotide guide, an NGG PAM immediately downstream defines a candidate SpCas9 target. PAM-proximal bases often contribute strongly to specificity, so mismatches near the PAM are typically less tolerated than distal mismatches."
+    }
+  ],
+  "key_points": [
+    "NGG means any base followed by two guanines.",
+    "PAM recognition is required before stable guide-target interrogation.",
+    "PAM availability constrains which genomic positions are targetable with SpCas9."
+  ],
+  "limitations": "PAM preferences vary across Cas enzymes and engineered variants. Some non-canonical PAMs may support activity, but efficiency and specificity can differ substantially.",
+  "references": [
+    "Mojica et al. Microbiology. 2009.",
+    "Jinek et al. Science. 2012.",
+    "Kleinstiver et al. Nature. 2015."
+  ]
+}

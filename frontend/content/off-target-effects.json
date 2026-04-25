@@ -1,0 +1,25 @@
+{
+  "title": "Off-target Effects",
+  "summary": "Off-target effects occur when a Cas-guide complex edits genomic sites that are similar, but not identical, to the intended target sequence.",
+  "sections": [
+    {
+      "heading": "Specificity determinants",
+      "content": "Off-target cleavage depends on mismatch number, mismatch position, PAM compatibility, bulges, chromatin accessibility, guide concentration, and exposure duration. PAM-proximal mismatches are often more disruptive than PAM-distal mismatches."
+    },
+    {
+      "heading": "Risk assessment",
+      "content": "Early risk screening checks for extreme GC content, repetitive sequence, low complexity, and close genomic matches. Production workflows should use genome-wide alignment or validated specificity assays when safety or interpretability matters."
+    }
+  ],
+  "key_points": [
+    "Specificity is sequence-dependent and context-dependent.",
+    "Low-complexity guides can increase ambiguity during genome-wide matching.",
+    "High-specificity Cas variants and careful guide selection can reduce off-target risk."
+  ],
+  "limitations": "Simple heuristics identify obvious risk patterns but cannot quantify genome-wide specificity without reference genome search and experimental confirmation.",
+  "references": [
+    "Fu et al. Nature Biotechnology. 2013.",
+    "Hsu et al. Nature Biotechnology. 2013.",
+    "Tsai et al. Nature Biotechnology. 2015."
+  ]
+}

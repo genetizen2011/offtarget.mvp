@@ -1,0 +1,25 @@
+{
+  "title": "Guide RNA (gRNA)",
+  "summary": "A guide RNA directs Cas9 to a genomic target through Watson-Crick base pairing between its spacer sequence and the complementary protospacer DNA.",
+  "sections": [
+    {
+      "heading": "Spacer design",
+      "content": "Most SpCas9 guide designs use a 20 nucleotide spacer upstream of an NGG PAM. Productive guides balance sufficient target binding with specificity, avoiding extreme GC content, repetitive motifs, and obvious sequence features that reduce performance."
+    },
+    {
+      "heading": "Scoring considerations",
+      "content": "Guide scoring models commonly incorporate GC content, position-specific nucleotides, self-complementarity, sequence complexity, chromatin accessibility, and empirically trained activity data. Lightweight tools may use transparent heuristics for early triage."
+    }
+  ],
+  "key_points": [
+    "The spacer sequence determines the primary genomic target.",
+    "GC content near 40-65% is often a practical starting range, not a guarantee of activity.",
+    "Guide quality should be assessed alongside off-target risk and experimental validation."
+  ],
+  "limitations": "Guide heuristics cannot replace empirical validation. Cell type, locus accessibility, delivery method, and assay design strongly influence observed editing efficiency.",
+  "references": [
+    "Doench et al. Nature Biotechnology. 2014.",
+    "Doench et al. Nature Biotechnology. 2016.",
+    "Hsu et al. Nature Biotechnology. 2013."
+  ]
+}

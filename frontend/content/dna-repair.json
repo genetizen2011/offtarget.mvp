@@ -1,0 +1,25 @@
+{
+  "title": "DNA Repair (NHEJ vs HDR)",
+  "summary": "After Cas9 creates a double-strand break, cellular repair pathways determine whether the outcome is an indel, precise sequence change, or donor-template-mediated insertion.",
+  "sections": [
+    {
+      "heading": "NHEJ",
+      "content": "Non-homologous end joining ligates broken DNA ends without requiring a homologous donor template. It is active in many cell states and often introduces small insertions or deletions that can disrupt coding sequence or regulatory elements."
+    },
+    {
+      "heading": "HDR",
+      "content": "Homology-directed repair uses a donor template with homology arms to introduce defined edits. HDR is generally most active in S/G2 phases and is often less efficient than NHEJ in many experimental systems."
+    }
+  ],
+  "key_points": [
+    "NHEJ is commonly used for gene disruption.",
+    "HDR enables precise edits but usually requires a donor template.",
+    "Repair pathway bias depends on cell type, cell cycle, delivery format, and locus context."
+  ],
+  "limitations": "Repair outcomes are heterogeneous. Precise editing strategies require careful donor design, genotyping, and assessment of unintended indels or rearrangements.",
+  "references": [
+    "Lieber. Annual Review of Biochemistry. 2010.",
+    "Mao et al. Nature Protocols. 2008.",
+    "Doudna and Charpentier. Science. 2014."
+  ]
+}

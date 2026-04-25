@@ -1,0 +1,25 @@
+{
+  "title": "CRISPR-Cas9 Overview",
+  "summary": "CRISPR-Cas9 is an RNA-guided genome engineering system that uses a programmable guide RNA to direct the Cas9 nuclease to a complementary DNA target adjacent to a compatible PAM.",
+  "sections": [
+    {
+      "heading": "Core mechanism",
+      "content": "A single guide RNA forms a ribonucleoprotein complex with Cas9 and samples genomic DNA for a protospacer-adjacent motif. After PAM recognition, local DNA unwinding allows guide-target pairing; sufficient complementarity enables Cas9 nuclease domains to generate a double-strand break."
+    },
+    {
+      "heading": "Experimental use",
+      "content": "Researchers design guide RNAs near a genomic locus, deliver Cas9 and guide components into cells, and rely on cellular repair pathways to create knockouts, precise edits, or targeted insertions depending on the repair template and experimental context."
+    }
+  ],
+  "key_points": [
+    "Cas9 targeting requires both guide-target complementarity and a compatible PAM.",
+    "The guide RNA typically contributes a 20 nucleotide spacer that defines the genomic target.",
+    "Editing outcome is determined by nuclease activity, delivery efficiency, chromatin context, and DNA repair pathway engagement."
+  ],
+  "limitations": "CRISPR-Cas9 activity is not equivalent across loci or cell types. Off-target cleavage, variable repair outcomes, incomplete editing, and delivery constraints must be evaluated experimentally.",
+  "references": [
+    "Jinek et al. Science. 2012.",
+    "Cong et al. Science. 2013.",
+    "Mali et al. Science. 2013."
+  ]
+}

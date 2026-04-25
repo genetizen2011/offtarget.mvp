@@ -25,10 +25,11 @@ export default function SequenceEditor({
   onLoadExample,
 }: SequenceEditorProps) {
   const normalizedPreview = sequence.toUpperCase().slice(0, MAX_PREVIEW_CHARS);
+  const progress = Math.min(100, (sequence.length / 200) * 100);
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-panel">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-panel">
+      <div className="mb-5 flex items-start justify-between gap-4 border-b border-gray-100 pb-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
             Sequence Input
@@ -45,15 +46,29 @@ export default function SequenceEditor({
         </span>
       </div>
 
-      <textarea
-        value={sequence}
-        onChange={(event) => onSequenceChange(event.target.value.toUpperCase())}
-        spellCheck={false}
-        placeholder="Paste A, T, C, G, or U sequence..."
-        className="min-h-64 w-full resize-y rounded-xl border border-gray-200 bg-gray-50 p-4 font-mono text-sm leading-6 text-gray-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-      />
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 transition focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs text-gray-500">
+          <span className="font-medium uppercase tracking-wide">Editor</span>
+          <span>{200 - sequence.length} bp remaining</span>
+        </div>
+        <textarea
+          value={sequence}
+          onChange={(event) => onSequenceChange(event.target.value.toUpperCase())}
+          spellCheck={false}
+          placeholder="Paste A, T, C, G, or U sequence..."
+          className="min-h-64 w-full resize-y bg-transparent p-4 font-mono text-sm leading-7 text-gray-900 outline-none"
+        />
+        <div className="h-1 bg-gray-100">
+          <div
+            className={`h-full transition-all ${
+              isValid ? "bg-emerald-500" : "bg-blue-500"
+            }`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
 
-      <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+      <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
           Base quality preview
         </p>
@@ -80,10 +95,12 @@ export default function SequenceEditor({
         )}
       </div>
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p
-          className={`text-sm ${
-            isValid ? "text-emerald-600" : "text-red-600"
+          className={`rounded-lg px-3 py-2 text-sm font-medium ${
+            isValid
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-red-50 text-red-700"
           }`}
           role="status"
         >
@@ -93,14 +110,14 @@ export default function SequenceEditor({
           <button
             type="button"
             onClick={onLoadExample}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:text-blue-700"
+            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
           >
             Load Example
           </button>
           <button
             type="button"
             onClick={onClear}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-red-200 hover:text-red-700"
+            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
           >
             Clear
           </button>
@@ -108,7 +125,7 @@ export default function SequenceEditor({
             type="button"
             disabled={!isValid || isLoading}
             onClick={onAnalyze}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             {isLoading ? "Analyzing..." : "Analyze"}
           </button>

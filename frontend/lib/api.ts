@@ -15,6 +15,12 @@ export type AnalyzeResponse = {
   best_guide: Guide | null;
 };
 
+export type SavedAnalysis = AnalyzeResponse & {
+  id: string;
+  sequence: string;
+  timestamp: string;
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
 

@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import GuideTable from "@/components/GuideTable";
-import InsightPanel from "@/components/InsightPanel";
+import { useEffect, useMemo, useState } from "react";
+import HistoryPanel from "@/components/HistoryPanel";
+import ResultDashboard from "@/components/ResultDashboard";
 import SequenceEditor from "@/components/SequenceEditor";
-import SummaryPanel from "@/components/SummaryPanel";
-import { analyzeSequence, type AnalyzeResponse } from "@/lib/api";
+import {
+  analyzeSequence,
+  type AnalyzeResponse,
+  type SavedAnalysis,
+} from "@/lib/api";
 
 const EXAMPLE_SEQUENCE =
   "ATGCGTACCGTAGCTAGCTAGGACCTGATCGTAGGCTAGCTAGGATCGATCGGATCCGTACTAGGCTA";
+const STORAGE_KEY = "offtarget.savedAnalyses.v1";
 
 function validateSequence(sequence: string) {
   if (!sequence) {
@@ -74,10 +78,44 @@ function exportGuides(results: AnalyzeResponse | null) {
 export default function Home() {
   const [sequence, setSequence] = useState("");
   const [results, setResults] = useState<AnalyzeResponse | null>(null);
+  const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const validation = useMemo(() => validateSequence(sequence), [sequence]);
+  const compareAnalyses = useMemo(
+    () =>
+      compareIds
+        .map((id) => savedAnalyses.find((analysis) => analysis.id === id))
+        .filter((analysis): analysis is SavedAnalysis => Boolean(analysis)),
+    [compareIds, savedAnalyses],
+  );
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      setIsHistoryLoaded(true);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as SavedAnalysis[];
+      if (Array.isArray(parsed)) {
+        setSavedAnalyses(parsed);
+      }
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } finally {
+      setIsHistoryLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isHistoryLoaded) return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedAnalyses));
+  }, [isHistoryLoaded, savedAnalyses]);
 
   async function handleAnalyze() {
     if (!validation.isValid) return;
@@ -91,8 +129,8 @@ export default function Home() {
     } catch (apiError) {
       setError(
         apiError instanceof Error
-          ? apiError.message
-          : "Unable to analyze this sequence.",
+          ? `Analysis failed: ${apiError.message}`
+          : "Analysis failed: Unable to analyze this sequence.",
       );
     } finally {
       setIsLoading(false);
@@ -109,6 +147,44 @@ export default function Home() {
     setSequence(EXAMPLE_SEQUENCE);
     setResults(null);
     setError("");
+  }
+
+  function handleSaveAnalysis() {
+    if (!results) return;
+
+    const saved: SavedAnalysis = {
+      ...results,
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      sequence,
+      timestamp: new Date().toISOString(),
+    };
+
+    setSavedAnalyses((current) => [saved, ...current].slice(0, 12));
+    setError("");
+  }
+
+  function handleReloadAnalysis(analysis: SavedAnalysis) {
+    setSequence(analysis.sequence);
+    setResults({
+      guides: analysis.guides,
+      best_guide: analysis.best_guide,
+    });
+    setError("");
+  }
+
+  function handleToggleCompare(id: string) {
+    setCompareIds((current) => {
+      if (current.includes(id)) {
+        return current.filter((selectedId) => selectedId !== id);
+      }
+
+      return [...current, id].slice(-2);
+    });
+  }
+
+  function handleClearHistory() {
+    setSavedAnalyses([]);
+    setCompareIds([]);
   }
 
   return (
@@ -128,7 +204,7 @@ export default function Home() {
             <a className="rounded-full bg-white px-4 py-2 text-blue-700 shadow-sm" href="#analyze">
               Analyze
             </a>
-            <a className="rounded-full px-4 py-2 transition hover:bg-white" href="#learn">
+            <a className="rounded-full px-4 py-2 transition hover:bg-white" href="/learn">
               Learn
             </a>
             <a className="rounded-full px-4 py-2 transition hover:bg-white" href="#saved">
@@ -138,19 +214,35 @@ export default function Home() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-panel">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
-              CRISPR guide analysis
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-950 sm:text-4xl">
-              Design candidate guide RNAs from a target sequence.
-            </h1>
-            <p className="mt-3 text-base leading-7 text-gray-600">
-              Scan NGG PAM sites, score upstream 20 nt guides, estimate basic
-              off-target risk, and export candidates for review.
-            </p>
+      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
+        <header className="mb-8 rounded-[2rem] border border-gray-200 bg-white p-8 shadow-panel">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
+                CRISPR guide analysis
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-950 sm:text-4xl">
+                Design candidate guide RNAs from a target sequence.
+              </h1>
+              <p className="mt-3 text-base leading-7 text-gray-600">
+                Scan NGG PAM sites, score upstream 20 nt guides, estimate basic
+                off-target risk, and export candidates for review.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-center">
+              <div className="px-3">
+                <p className="text-lg font-semibold text-gray-900">NGG</p>
+                <p className="text-xs text-gray-500">PAM scan</p>
+              </div>
+              <div className="border-x border-gray-200 px-3">
+                <p className="text-lg font-semibold text-gray-900">20 nt</p>
+                <p className="text-xs text-gray-500">Guide window</p>
+              </div>
+              <div className="px-3">
+                <p className="text-lg font-semibold text-gray-900">CSV</p>
+                <p className="text-xs text-gray-500">Export</p>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -162,9 +254,9 @@ export default function Home() {
 
         <div
           id="analyze"
-          className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]"
+          className="grid items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)_360px]"
         >
-          <div className="space-y-4">
+          <div className="space-y-5 xl:sticky xl:top-24">
             <SequenceEditor
               sequence={sequence}
               validationMessage={validation.message}
@@ -175,32 +267,25 @@ export default function Home() {
               onClear={handleClear}
               onLoadExample={handleLoadExample}
             />
-            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-panel">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    Export candidates
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Download guide sequence, PAM, score, GC, and risk as CSV.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => exportGuides(results)}
-                  disabled={!results?.guides.length}
-                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-                >
-                  Download CSV
-                </button>
-              </div>
-            </section>
           </div>
 
-          <div className="space-y-6">
-            <SummaryPanel results={results} isLoading={isLoading} />
-            <GuideTable guides={results?.guides ?? []} isLoading={isLoading} />
-            <InsightPanel results={results} isLoading={isLoading} />
+          <ResultDashboard
+            results={results}
+            isLoading={isLoading}
+            compareAnalyses={compareAnalyses}
+            onSaveAnalysis={handleSaveAnalysis}
+            onExportCsv={() => exportGuides(results)}
+            canSave={Boolean(results) && !isLoading}
+          />
+
+          <div className="xl:sticky xl:top-24">
+            <HistoryPanel
+              savedAnalyses={savedAnalyses}
+              selectedIds={compareIds}
+              onReload={handleReloadAnalysis}
+              onToggleCompare={handleToggleCompare}
+              onClearHistory={handleClearHistory}
+            />
           </div>
         </div>
       </div>

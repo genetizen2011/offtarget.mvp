@@ -1,4 +1,5 @@
 import {
+  AUTH_TOKEN_STORAGE_KEY,
   getLocalStorageItem,
   removeLocalStorageItem,
   setLocalStorageItem,
@@ -59,20 +60,16 @@ export type StoredAnalysis = {
   created_at: string;
 };
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
-const TOKEN_KEY = "offtarget.authToken";
-
 export function getAuthToken() {
-  return getLocalStorageItem(TOKEN_KEY);
+  return getLocalStorageItem(AUTH_TOKEN_STORAGE_KEY);
 }
 
 export function setAuthToken(token: string) {
-  setLocalStorageItem(TOKEN_KEY, token);
+  setLocalStorageItem(AUTH_TOKEN_STORAGE_KEY, token);
 }
 
 export function clearAuthToken() {
-  removeLocalStorageItem(TOKEN_KEY);
+  removeLocalStorageItem(AUTH_TOKEN_STORAGE_KEY);
 }
 
 function authHeaders(): Record<string, string> {
@@ -80,33 +77,40 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, init);
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message =
+      typeof body?.message === "string"
+        ? body.message
+        : typeof body?.detail?.message === "string"
+          ? body.detail.message
+          : typeof body?.detail === "string"
+            ? body.detail
+            : `Request failed: ${response.status}`;
+    throw new Error(message);
+  }
+
+  return (await response.json()) as T;
+}
+
 export async function analyzeSequence(sequence: string): Promise<AnalyzeResponse> {
-  const response = await fetch(`${API_BASE_URL}/analyze`, {
+  return requestJson<AnalyzeResponse>("/api/analyze", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ sequence }),
   });
-
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      payload?.detail?.message ??
-      payload?.detail ??
-      "Analysis failed. Please check the sequence and try again.";
-    throw new Error(String(message));
-  }
-
-  return payload as AnalyzeResponse;
 }
 
 export async function explainAnalysis(
   mode: ExplanationMode,
   results: AnalyzeResponse,
 ): Promise<AIExplanation> {
-  const response = await fetch(`${API_BASE_URL}/ai/explain`, {
+  const payload = await requestJson<{ explanation: AIExplanation }>("/api/ai/explain", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -117,18 +121,7 @@ export async function explainAnalysis(
       best_guide: results.best_guide,
     }),
   });
-
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      payload?.detail?.message ??
-      payload?.detail ??
-      "AI explanation failed. Please try again.";
-    throw new Error(String(message));
-  }
-
-  return payload.explanation as AIExplanation;
+  return payload.explanation;
 }
 
 export async function registerUser(
@@ -150,42 +143,27 @@ async function authRequest(
   email: string,
   password: string,
 ): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const payload = await requestJson<AuthResponse>(`/api${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      payload?.detail?.message ?? payload?.detail ?? "Authentication failed.";
-    throw new Error(String(message));
-  }
 
   setAuthToken(payload.access_token);
-  return payload as AuthResponse;
+  return payload;
 }
 
 export async function getCurrentUser(): Promise<AuthUser> {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  return requestJson<AuthUser>("/api/auth/me", {
     headers: authHeaders(),
   });
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message = payload?.detail?.message ?? payload?.detail ?? "Unauthorized.";
-    throw new Error(String(message));
-  }
-
-  return payload as AuthUser;
 }
 
 export async function saveAnalysisToBackend(
   sequence: string,
   results: AnalyzeResponse,
 ): Promise<StoredAnalysis> {
-  const response = await fetch(`${API_BASE_URL}/analyses`, {
+  return requestJson<StoredAnalysis>("/api/analyses", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -193,28 +171,10 @@ export async function saveAnalysisToBackend(
     },
     body: JSON.stringify({ sequence, results_json: results }),
   });
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      payload?.detail?.message ?? payload?.detail ?? "Unable to save analysis.";
-    throw new Error(String(message));
-  }
-
-  return payload as StoredAnalysis;
 }
 
 export async function fetchSavedAnalyses(): Promise<StoredAnalysis[]> {
-  const response = await fetch(`${API_BASE_URL}/analyses`, {
+  return requestJson<StoredAnalysis[]>("/api/analyses", {
     headers: authHeaders(),
   });
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      payload?.detail?.message ?? payload?.detail ?? "Unable to load history.";
-    throw new Error(String(message));
-  }
-
-  return payload as StoredAnalysis[];
 }

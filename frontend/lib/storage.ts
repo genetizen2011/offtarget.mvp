@@ -1,6 +1,9 @@
 const STORAGE_BLOCKED_MESSAGE =
-  "Saves are unavailable — your browser is blocking local storage. Try disabling private mode.";
+  "Saves unavailable — try disabling private browsing mode.";
 export const STORAGE_BLOCKED_EVENT = "offtarget:local-storage-blocked";
+export const SAVED_ANALYSES_STORAGE_KEY = "offTarget_saved";
+export const AUTH_TOKEN_STORAGE_KEY = "offTarget_authToken";
+export const PENDING_RELOAD_STORAGE_KEY = "offTarget_pendingReload";
 
 export function getStorageBlockedMessage() {
   return STORAGE_BLOCKED_MESSAGE;

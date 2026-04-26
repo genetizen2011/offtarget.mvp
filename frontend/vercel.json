@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "env": {
+    "APP_JWT_SECRET": "@app_jwt_secret"
+  }
+}

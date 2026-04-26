@@ -20,7 +20,7 @@ from routers.auth import router as auth_router
 
 load_dotenv()
 
-VALID_SEQUENCE = re.compile(r"^[ATCGU]+$")
+PAM_PATTERN = re.compile(r"[ACGT]GG")
 RiskLevel = Literal["low", "medium", "high"]
 ExplanationMode = Literal["student", "researcher"]
 
@@ -111,22 +111,38 @@ class AIExplainResponse(BaseModel):
 
 
 def normalize_sequence(sequence: str) -> str:
-    cleaned = "".join(sequence.split()).upper().replace("U", "T")
-    if not VALID_SEQUENCE.fullmatch(cleaned):
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "message": "Sequence may only contain A, T, C, G, or U.",
-                "code": "INVALID_CHARACTERS",
-            },
-        )
+    cleaned = sequence
+    if cleaned.strip().startswith(">"):
+        cleaned = re.sub(r"^>.*$", "", cleaned, count=1, flags=re.MULTILINE).strip()
 
-    if not 20 <= len(cleaned) <= 200:
+    cleaned = re.sub(r"\s", "", cleaned)
+    cleaned = cleaned.upper().replace("U", "T")
+
+    if len(cleaned) < 20:
         raise HTTPException(
             status_code=422,
             detail={
                 "message": "Sequence length must be between 20 and 200 bp.",
                 "code": "INVALID_LENGTH",
+            },
+        )
+
+    if len(cleaned) > 200:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Sequence length must be between 20 and 200 bp.",
+                "code": "INVALID_LENGTH",
+            },
+        )
+
+    invalid = "".join(dict.fromkeys(re.sub(r"[ACGTN]", "", cleaned)))
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": f"Invalid characters found: {', '.join(invalid)}",
+                "code": "INVALID_CHARACTERS",
             },
         )
 
@@ -183,13 +199,15 @@ def classify_risk(guide: str, score: float) -> tuple[RiskLevel, str]:
 
 def find_guides(sequence: str) -> list[Guide]:
     guides: list[Guide] = []
+    scan_sequence = re.sub(r"N(?=GG)", "A", sequence)
 
-    for index in range(len(sequence) - 2):
-        pam = sequence[index : index + 3]
-        if pam[1:] != "GG" or index < 20:
+    for match in PAM_PATTERN.finditer(scan_sequence):
+        pam_index = match.start()
+        if pam_index < 20:
             continue
 
-        guide_sequence = sequence[index - 20 : index]
+        pam = sequence[pam_index : pam_index + 3]
+        guide_sequence = sequence[pam_index - 20 : pam_index]
         score = efficiency_score(guide_sequence, pam)
         risk, risk_reason = classify_risk(guide_sequence, score)
 
@@ -197,7 +215,7 @@ def find_guides(sequence: str) -> list[Guide]:
             Guide(
                 sequence=guide_sequence,
                 pam=pam,
-                position=index + 1,
+                position=pam_index + 1,
                 gc_content=gc_content(guide_sequence),
                 score=score,
                 risk=risk,

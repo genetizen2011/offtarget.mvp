@@ -9,6 +9,9 @@ import {
   getAuthToken,
   type StoredAnalysis,
 } from "@/lib/api";
+import { setLocalStorageItem } from "@/lib/storage";
+
+const PENDING_RELOAD_KEY = "offtarget.pendingReload";
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -39,13 +42,17 @@ export default function HistoryPage() {
   }
 
   function handleReload(analysis: StoredAnalysis) {
-    window.localStorage.setItem(
-      "offtarget.pendingReload",
+    const wasSaved = setLocalStorageItem(
+      PENDING_RELOAD_KEY,
       JSON.stringify({
         sequence: analysis.sequence,
         results: analysis.results_json,
       }),
     );
+    if (!wasSaved) {
+      setError("Unable to reload this analysis because local storage is blocked.");
+      return;
+    }
     router.push("/");
   }
 

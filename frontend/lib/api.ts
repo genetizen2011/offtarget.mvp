@@ -1,3 +1,9 @@
+import {
+  getLocalStorageItem,
+  removeLocalStorageItem,
+  setLocalStorageItem,
+} from "./storage";
+
 export type RiskLevel = "low" | "medium" | "high";
 
 export type Guide = {
@@ -58,16 +64,15 @@ const API_BASE_URL =
 const TOKEN_KEY = "offtarget.authToken";
 
 export function getAuthToken() {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  return getLocalStorageItem(TOKEN_KEY);
 }
 
 export function setAuthToken(token: string) {
-  window.localStorage.setItem(TOKEN_KEY, token);
+  setLocalStorageItem(TOKEN_KEY, token);
 }
 
 export function clearAuthToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
+  removeLocalStorageItem(TOKEN_KEY);
 }
 
 function authHeaders(): Record<string, string> {

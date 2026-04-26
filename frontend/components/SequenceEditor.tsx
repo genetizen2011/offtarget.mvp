@@ -1,7 +1,7 @@
 "use client";
 
 const MAX_PREVIEW_CHARS = 200;
-const allowedBases = new Set(["A", "T", "C", "G", "U"]);
+const allowedBases = new Set(["A", "T", "C", "G", "N"]);
 
 type SequenceEditorProps = {
   sequence: string;
@@ -24,8 +24,13 @@ export default function SequenceEditor({
   onClear,
   onLoadExample,
 }: SequenceEditorProps) {
-  const normalizedPreview = sequence.toUpperCase().slice(0, MAX_PREVIEW_CHARS);
-  const progress = Math.min(100, (sequence.length / 200) * 100);
+  const cleanedLength = sequence.replace(/\s/g, "").length;
+  const normalizedPreview = sequence
+    .replace(/\s/g, "")
+    .toUpperCase()
+    .replace(/U/g, "T")
+    .slice(0, MAX_PREVIEW_CHARS);
+  const progress = Math.min(100, (cleanedLength / 200) * 100);
 
   return (
     <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-panel">
@@ -42,18 +47,18 @@ export default function SequenceEditor({
           </p>
         </div>
         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-          {sequence.length}/200
+          {cleanedLength}/200
         </span>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 transition focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs text-gray-500">
           <span className="font-medium uppercase tracking-wide">Editor</span>
-          <span>{200 - sequence.length} bp remaining</span>
+          <span>{200 - cleanedLength} bp remaining</span>
         </div>
         <textarea
           value={sequence}
-          onChange={(event) => onSequenceChange(event.target.value.toUpperCase())}
+          onChange={(event) => onSequenceChange(event.target.value)}
           spellCheck={false}
           placeholder="Paste A, T, C, G, or U sequence..."
           className="min-h-64 w-full resize-y bg-transparent p-4 font-mono text-sm leading-7 text-gray-900 outline-none"

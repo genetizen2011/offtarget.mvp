@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import HistoryPanel from "@/components/HistoryPanel";
 import ResultDashboard from "@/components/ResultDashboard";
 import SequenceEditor from "@/components/SequenceEditor";
+import { GUIDE_COLUMNS } from "@/lib/guideColumns";
 import {
   analyzeSequence,
   clearAuthToken,
@@ -30,52 +31,35 @@ import {
 const EXAMPLE_SEQUENCE =
   "ATGCGTACCGTAGCTAGCTAGGACCTGATCGTAGGCTAGCTAGGATCGATCGGATCCGTACTAGGCTA";
 const FASTA_NOTICE = "FASTA header detected and removed.";
+const TRIM_NOTICE = "Sequence trimmed to 200 bp.";
 
 function validateSequence(sequence: string) {
-  let cleaned = sequence;
-  const fastaHeaderRemoved = cleaned.trim().startsWith(">");
-
-  if (fastaHeaderRemoved) {
-    cleaned = cleaned.replace(/^>.*$/gm, "").trim();
-  }
-
-  cleaned = cleaned.replace(/\s/g, "");
-  cleaned = cleaned.toUpperCase().replace(/U/g, "T");
+  const fastaHeaderRemoved = sequence.trim().startsWith(">");
+  const sanitized = sequence
+    .replace(/[^ATCGUatcgu]/g, "")
+    .toUpperCase()
+    .replace(/U/g, "T");
+  const wasTrimmed = sanitized.length > 200;
+  const cleaned = sanitized.slice(0, 200);
 
   if (!cleaned) {
     return {
       isValid: false,
-      message: "Enter a target sequence to begin.",
+      message: "Paste a target sequence to begin.",
       sequence: cleaned,
       fastaHeaderRemoved,
+      wasTrimmed,
     };
   }
 
   if (cleaned.length < 20) {
     return {
       isValid: false,
-      message: "Sequence too short — minimum 20 bp",
+      message:
+        "Sequence too short — need at least 20 bp after removing non-DNA characters.",
       sequence: cleaned,
       fastaHeaderRemoved,
-    };
-  }
-
-  if (cleaned.length > 200) {
-    return {
-      isValid: false,
-      message: "Sequence too long — maximum 200 bp",
-      sequence: cleaned,
-      fastaHeaderRemoved,
-    };
-  }
-
-  const invalid = cleaned.replace(/[ACGTN]/g, "");
-  if (invalid.length > 0) {
-    return {
-      isValid: false,
-      message: `Invalid characters: ${[...new Set(invalid)].join(", ")}`,
-      sequence: cleaned,
-      fastaHeaderRemoved,
+      wasTrimmed,
     };
   }
 
@@ -84,21 +68,21 @@ function validateSequence(sequence: string) {
     message: "Sequence is valid and ready to analyze.",
     sequence: cleaned,
     fastaHeaderRemoved,
+    wasTrimmed,
   };
 }
 
 function exportGuides(results: AnalyzeResponse | null) {
   if (!results?.guides.length) return;
 
-  const headers = ["sequence", "pam", "position", "gc_percent", "score", "risk"];
-  const rows = results.guides.map((guide) => [
-    guide.sequence,
-    guide.pam,
-    guide.position,
-    guide.gc_content,
-    guide.score,
-    guide.risk,
-  ]);
+  const headers = GUIDE_COLUMNS.map((column) => column.csvHeader);
+  const rows = results.guides.map((guide) =>
+    GUIDE_COLUMNS.map((column) => {
+      if (column.key === "position") return `${guide.pam} @ ${guide.position}`;
+      if (column.key === "strand") return guide.strand ?? "+";
+      return guide[column.key];
+    }),
+  );
 
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
@@ -128,6 +112,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [storageError, setStorageError] = useState("");
   const [fastaNotice, setFastaNotice] = useState("");
+  const [trimNotice, setTrimNotice] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const validation = useMemo(() => validateSequence(sequence), [sequence]);
@@ -233,6 +218,7 @@ export default function Home() {
     try {
       setSequence(validation.sequence);
       setFastaNotice(validation.fastaHeaderRemoved ? FASTA_NOTICE : "");
+      setTrimNotice(validation.wasTrimmed ? TRIM_NOTICE : "");
       const response = await analyzeSequence(validation.sequence);
       setResults(response);
     } catch (apiError) {
@@ -253,6 +239,7 @@ export default function Home() {
     setAiError("");
     setError("");
     setFastaNotice("");
+    setTrimNotice("");
   }
 
   function handleLoadExample() {
@@ -262,6 +249,7 @@ export default function Home() {
     setAiError("");
     setError("");
     setFastaNotice("");
+    setTrimNotice("");
   }
 
   async function handleGenerateExplanation() {
@@ -288,6 +276,7 @@ export default function Home() {
   function handleSequenceChange(nextSequence: string) {
     setSequence(nextSequence);
     setFastaNotice("");
+    setTrimNotice("");
     setError("");
   }
 
@@ -436,6 +425,19 @@ export default function Home() {
           </div>
         ) : null}
 
+        {trimNotice ? (
+          <div className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
+            <span>{trimNotice}</span>
+            <button
+              type="button"
+              onClick={() => setTrimNotice("")}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-yellow-700 transition hover:bg-yellow-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
         {error ? (
           <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
@@ -449,6 +451,7 @@ export default function Home() {
           <div className="space-y-5 xl:sticky xl:top-24">
             <SequenceEditor
               sequence={sequence}
+              sanitizedLength={validation.sequence.length}
               validationMessage={validation.message}
               isValid={validation.isValid}
               isLoading={isLoading}
@@ -463,6 +466,7 @@ export default function Home() {
             results={results}
             isLoading={isLoading}
             compareAnalyses={compareAnalyses}
+            savedAnalysisCount={savedAnalyses.length}
             explanationMode={explanationMode}
             aiExplanation={aiExplanation}
             aiError={aiError}
@@ -478,6 +482,7 @@ export default function Home() {
             <HistoryPanel
               savedAnalyses={savedAnalyses}
               selectedIds={compareIds}
+              canCompare={savedAnalyses.length >= 2}
               onReload={handleReloadAnalysis}
               onToggleCompare={handleToggleCompare}
               onClearHistory={handleClearHistory}

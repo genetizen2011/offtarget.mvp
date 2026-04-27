@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import type { Guide } from "@/lib/api";
+import { GUIDE_COLUMNS } from "@/lib/guideColumns";
 import RiskBadge from "./RiskBadge";
 import Tooltip from "./Tooltip";
 
-type SortKey = "sequence" | "gc_content" | "score" | "risk" | "position";
+type SortKey = "sequence" | "gc_content" | "score" | "risk" | "position" | "strand";
 type SortDirection = "asc" | "desc";
 type RiskFilter = "all" | "low" | "medium" | "high";
 
@@ -25,11 +26,14 @@ function LoadingRows() {
     <>
       {[0, 1, 2].map((row) => (
         <tr key={row} className="border-t border-gray-100">
-          {[0, 1, 2, 3, 4].map((cell) => (
-            <td key={cell} className="px-4 py-4">
+          {GUIDE_COLUMNS.map((column) => (
+            <td key={column.key} className="px-4 py-4">
               <div className="h-5 animate-pulse rounded bg-gray-100" />
             </td>
           ))}
+          <td className="px-4 py-4">
+            <div className="h-5 animate-pulse rounded bg-gray-100" />
+          </td>
         </tr>
       ))}
     </>
@@ -44,22 +48,23 @@ export default function GuideTable({ guides, isLoading }: GuideTableProps) {
   const [copiedSequence, setCopiedSequence] = useState<string | null>(null);
 
   const visibleGuides = useMemo(() => {
+    // Filters intentionally compose with AND logic: a guide must pass score and risk.
     return guides
       .filter((guide) => guide.score >= scoreThreshold)
       .filter((guide) => riskFilter === "all" || guide.risk === riskFilter)
       .sort((a, b) => {
-      let valueA: string | number = a[sortKey];
-      let valueB: string | number = b[sortKey];
+        let valueA: string | number = a[sortKey] ?? "";
+        let valueB: string | number = b[sortKey] ?? "";
 
-      if (sortKey === "risk") {
-        valueA = riskRank[a.risk];
-        valueB = riskRank[b.risk];
-      }
+        if (sortKey === "risk") {
+          valueA = riskRank[a.risk];
+          valueB = riskRank[b.risk];
+        }
 
-      if (valueA < valueB) return sortDirection === "asc" ? -1 : 1;
-      if (valueA > valueB) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
+        if (valueA < valueB) return sortDirection === "asc" ? -1 : 1;
+        if (valueA > valueB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
   }, [guides, riskFilter, scoreThreshold, sortDirection, sortKey]);
 
   function updateSort(nextKey: SortKey) {
@@ -103,6 +108,7 @@ export default function GuideTable({ guides, isLoading }: GuideTableProps) {
               <option value="score">Score</option>
               <option value="gc_content">GC %</option>
               <option value="position">PAM position</option>
+              <option value="strand">Strand</option>
               <option value="risk">Risk</option>
               <option value="sequence">Sequence</option>
             </select>
@@ -180,8 +186,13 @@ export default function GuideTable({ guides, isLoading }: GuideTableProps) {
                 </th>
                 <th className="px-4 py-3">
                   <button type="button" onClick={() => updateSort("position")}>
-                    PAM
+                    PAM position
                     <Tooltip term="pam" label="PAM help" />
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button type="button" onClick={() => updateSort("strand")}>
+                    Strand
                   </button>
                 </th>
                 <th className="px-4 py-3">Copy</th>
@@ -191,7 +202,7 @@ export default function GuideTable({ guides, isLoading }: GuideTableProps) {
               {isLoading ? <LoadingRows /> : null}
               {!isLoading && visibleGuides.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
                     No candidate guides match the current filters.
                   </td>
                 </tr>
@@ -199,7 +210,7 @@ export default function GuideTable({ guides, isLoading }: GuideTableProps) {
               {!isLoading
                 ? visibleGuides.map((guide) => (
                     <tr
-                      key={`${guide.sequence}-${guide.position}`}
+                      key={`${guide.sequence}-${guide.strand}-${guide.position}`}
                       className="transition hover:bg-blue-50/60"
                     >
                       <td className="max-w-xs break-all px-4 py-5 font-mono text-xs text-gray-900">
@@ -216,6 +227,9 @@ export default function GuideTable({ guides, isLoading }: GuideTableProps) {
                       </td>
                       <td className="px-4 py-5 font-mono text-xs text-gray-700">
                         {guide.pam} @ {guide.position}
+                      </td>
+                      <td className="px-4 py-5 font-mono text-xs text-gray-700">
+                        {guide.strand ?? "+"}
                       </td>
                       <td className="px-4 py-5">
                         <button

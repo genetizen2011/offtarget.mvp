@@ -3,6 +3,7 @@ import RiskBadge from "./RiskBadge";
 
 type CompareViewProps = {
   analyses: SavedAnalysis[];
+  savedAnalysisCount: number;
 };
 
 function formatTimestamp(timestamp: string) {
@@ -14,8 +15,10 @@ function formatTimestamp(timestamp: string) {
   }).format(new Date(timestamp));
 }
 
-export default function CompareView({ analyses }: CompareViewProps) {
+export default function CompareView({ analyses, savedAnalysisCount }: CompareViewProps) {
   const [first, second] = analyses;
+  const hasCompleteSelection = Boolean(first && second);
+  const comparisonAnalyses = first && second ? [first, second] : [];
 
   return (
     <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-panel">
@@ -31,15 +34,20 @@ export default function CompareView({ analyses }: CompareViewProps) {
         </p>
       </div>
 
-      {analyses.length !== 2 ? (
+      {savedAnalysisCount < 2 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-          {analyses.length === 0
-            ? "No analyses selected for comparison."
-            : "Select one more saved analysis to complete the comparison."}
+          <p>Save at least 2 analyses to enable comparison.</p>
+          {savedAnalysisCount === 1 ? (
+            <p className="mt-2">No second analysis saved yet</p>
+          ) : null}
+        </div>
+      ) : !hasCompleteSelection ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+          Select two saved analyses to compare.
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {[first, second].map((analysis, index) => {
+          {comparisonAnalyses.map((analysis, index) => {
             const guide = analysis.best_guide;
             return (
               <article

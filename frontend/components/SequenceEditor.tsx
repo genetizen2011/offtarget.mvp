@@ -1,10 +1,11 @@
 "use client";
 
 const MAX_PREVIEW_CHARS = 200;
-const allowedBases = new Set(["A", "T", "C", "G", "N"]);
+const allowedBases = new Set(["A", "T", "C", "G"]);
 
 type SequenceEditorProps = {
   sequence: string;
+  sanitizedLength: number;
   validationMessage: string;
   isValid: boolean;
   isLoading: boolean;
@@ -16,6 +17,7 @@ type SequenceEditorProps = {
 
 export default function SequenceEditor({
   sequence,
+  sanitizedLength,
   validationMessage,
   isValid,
   isLoading,
@@ -24,9 +26,9 @@ export default function SequenceEditor({
   onClear,
   onLoadExample,
 }: SequenceEditorProps) {
-  const cleanedLength = sequence.replace(/\s/g, "").length;
+  const cleanedLength = sanitizedLength;
   const normalizedPreview = sequence
-    .replace(/\s/g, "")
+    .replace(/[^ATCGUatcgu]/g, "")
     .toUpperCase()
     .replace(/U/g, "T")
     .slice(0, MAX_PREVIEW_CHARS);
@@ -54,7 +56,7 @@ export default function SequenceEditor({
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 transition focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs text-gray-500">
           <span className="font-medium uppercase tracking-wide">Editor</span>
-          <span>{200 - cleanedLength} bp remaining</span>
+          <span>{Math.max(0, 200 - cleanedLength)} bp remaining</span>
         </div>
         <textarea
           value={sequence}

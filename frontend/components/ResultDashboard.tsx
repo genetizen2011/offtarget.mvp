@@ -11,6 +11,7 @@ type ResultDashboardProps = {
   results: AnalyzeResponse | null;
   isLoading: boolean;
   compareAnalyses: SavedAnalysis[];
+  savedAnalysisCount: number;
   explanationMode: ExplanationMode;
   aiExplanation: AIExplanation | null;
   aiError: string;
@@ -26,6 +27,7 @@ export default function ResultDashboard({
   results,
   isLoading,
   compareAnalyses,
+  savedAnalysisCount,
   explanationMode,
   aiExplanation,
   aiError,
@@ -106,7 +108,7 @@ export default function ResultDashboard({
         aiError={aiError}
         isAiLoading={isAiLoading}
       />
-      <CompareView analyses={compareAnalyses} />
+      <CompareView analyses={compareAnalyses} savedAnalysisCount={savedAnalysisCount} />
     </div>
   );
 }

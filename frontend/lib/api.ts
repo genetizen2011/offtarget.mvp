@@ -6,15 +6,18 @@ import {
 } from "./storage";
 
 export type RiskLevel = "low" | "medium" | "high";
+export type GuideStrand = "+" | "−";
 
 export type Guide = {
   sequence: string;
   pam: string;
   position: number;
+  strand: GuideStrand;
   gc_content: number;
   score: number;
   risk: RiskLevel;
   risk_reason: string;
+  stability_flags: string[];
 };
 
 export type AnalyzeResponse = {

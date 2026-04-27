@@ -42,18 +42,25 @@ export default function InsightPanel({
 
     insight = `This guide is ranked highest because it combines a ${bestGuide.score.toFixed(
       2,
-    )} efficiency score with ${bestGuide.gc_content}% GC, which ${gcFit} the preferred CRISPR design window.`;
+    )} efficiency score with ${bestGuide.gc_content}% GC, which ${gcFit} the preferred CRISPR design window.${
+      bestGuide.strand === "−" ? " It was found on the reverse-complement strand." : ""
+    }`;
     gcNote = hasExtremeGc
       ? "Extreme GC content may reduce specificity or make synthesis and binding less reliable."
       : "GC content is within a practical range for short guide design.";
-    stabilityNote = hasPotentialInstability
-      ? "A repeated base run may indicate instability or elevated off-target risk."
-      : "No obvious homopolymer instability pattern is present in the best guide.";
+    const stabilityFlags = bestGuide.stability_flags ?? [];
+    stabilityNote =
+      stabilityFlags.length > 0
+        ? stabilityFlags.join(" ")
+        : hasPotentialInstability
+          ? "A repeated base run may indicate instability or elevated off-target risk."
+          : "No obvious homopolymer instability pattern is present in the best guide.";
     riskNote = bestGuide.risk_reason;
     selectionPoints = [
       `Efficiency score: ${bestGuide.score.toFixed(2)} on a 0-1 heuristic scale.`,
       `GC content: ${bestGuide.gc_content}% compared with the preferred 40-65% design window.`,
       `Risk category: ${bestGuide.risk}, based on GC extremes, repeats, and homopolymer patterns.`,
+      `Strand: ${bestGuide.strand === "−" ? "reverse complement" : "forward"}.`,
     ];
   } else if (results) {
     insight =
@@ -188,6 +195,18 @@ export default function InsightPanel({
                 <li key={point}>- {point}</li>
               ))}
             </ul>
+            <details className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+                Scoring method
+              </summary>
+              <p className="mt-3 text-sm leading-6 text-gray-600">
+                This score is a lightweight heuristic for early triage, not a
+                validated activity predictor. It favors balanced GC content,
+                compatible PAM context, and stable guide composition while
+                penalizing homopolymer runs, repeated motifs, and low-complexity
+                spacers.
+              </p>
+            </details>
           </div>
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
             <p className="text-sm font-semibold text-emerald-900">

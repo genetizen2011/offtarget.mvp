@@ -5,6 +5,7 @@ import type { SavedAnalysis } from "@/lib/api";
 type HistoryPanelProps = {
   savedAnalyses: SavedAnalysis[];
   selectedIds: string[];
+  canCompare: boolean;
   onReload: (analysis: SavedAnalysis) => void;
   onToggleCompare: (id: string) => void;
   onClearHistory: () => void;
@@ -22,6 +23,7 @@ function formatTimestamp(timestamp: string) {
 export default function HistoryPanel({
   savedAnalyses,
   selectedIds,
+  canCompare,
   onReload,
   onToggleCompare,
   onClearHistory,
@@ -82,8 +84,9 @@ export default function HistoryPanel({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onToggleCompare(analysis.id)}
+                    disabled={!canCompare}
                     aria-label="Select analysis for comparison"
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
                   />
                 </div>
                 <p className="mt-3 line-clamp-2 break-all font-mono text-xs text-gray-600">
@@ -100,7 +103,8 @@ export default function HistoryPanel({
                   <button
                     type="button"
                     onClick={() => onToggleCompare(analysis.id)}
-                    className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 transition hover:text-blue-700 hover:ring-blue-300"
+                    disabled={!canCompare}
+                    className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 transition hover:text-blue-700 hover:ring-blue-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:text-gray-400 disabled:hover:ring-gray-200"
                   >
                     {isSelected ? "Remove" : "Compare"}
                   </button>

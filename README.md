@@ -16,10 +16,11 @@ The frontend runs at `http://localhost:3000`.
 
 ## Environment Variables
 
-Copy `frontend/.env.example` to `frontend/.env.local` for local development:
+Copy `.env.example` to `.env.local` for local development. The Next.js app also
+loads `frontend/.env.local` when running from `frontend/`.
 
 ```env
-APP_JWT_SECRET=replace-with-a-long-random-secret
+APP_JWT_SECRET=your-random-32-char-secret-here
 ```
 
 ## Deployment
@@ -29,6 +30,6 @@ For the full production checklist, see `DEPLOYMENT.md`.
 ### Vercel
 
 1. Import the repository into Vercel.
-2. Set the root directory to `frontend`.
-3. Add `APP_JWT_SECRET` as a project environment variable.
+2. Deploy from `main`; `vercel.json` sets the root directory to `frontend`.
+3. Add the variables from `.env.example` in Vercel Project Settings.
 4. Deploy with the default Next.js build command, `npm run build`.

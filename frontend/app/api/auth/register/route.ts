@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { jsonError, readJson, requireString } from "../../_utils";
+import { jsonError, readJson, requireServerEnv, requireString } from "../../_utils";
 import { registerUser } from "@/lib/server/authStore";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const envError = requireServerEnv(["APP_JWT_SECRET"]);
+  if (envError) return envError;
+
   try {
     const body = await readJson(request);
     const email = requireString(body.email, "email");

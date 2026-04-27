@@ -51,7 +51,7 @@ const store =
   });
 
 function getJwtSecret() {
-  const secret = process.env.APP_JWT_SECRET ?? process.env.JWT_SECRET_KEY;
+  const secret = process.env.APP_JWT_SECRET;
 
   if (secret) return secret;
 

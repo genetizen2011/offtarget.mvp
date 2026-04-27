@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { jsonError, readJson, requireString } from "../_utils";
+import { jsonError, readJson, requireServerEnv, requireString } from "../_utils";
 import { listAnalyses, saveAnalysis } from "@/lib/server/authStore";
 import type { AnalyzeResponse } from "@/lib/server/crispr";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const envError = requireServerEnv(["APP_JWT_SECRET"]);
+  if (envError) return envError;
+
   try {
     return NextResponse.json(listAnalyses(request.headers.get("authorization")));
   } catch (error) {
@@ -14,6 +17,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const envError = requireServerEnv(["APP_JWT_SECRET"]);
+  if (envError) return envError;
+
   try {
     const body = await readJson(request);
     const sequence = requireString(body.sequence, "sequence");

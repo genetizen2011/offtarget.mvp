@@ -85,6 +85,8 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     const message =
       typeof body?.message === "string"
         ? body.message
+        : typeof body?.error === "string"
+          ? body.error
         : typeof body?.detail?.message === "string"
           ? body.detail.message
           : typeof body?.detail === "string"

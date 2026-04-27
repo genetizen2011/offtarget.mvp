@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
 import { ApiError } from "@/lib/server/crispr";
 
+const missingEnvMessage = (key: string) =>
+  `Server misconfiguration: ${key} is not set. Add it in Vercel → Settings → Environment Variables.`;
+
+export function requireServerEnv(keys: string[]) {
+  for (const key of keys) {
+    const value = process.env[key];
+
+    if (!value) {
+      console.error(`Missing required environment variable: ${key}`);
+      return NextResponse.json(
+        { error: missingEnvMessage(key), message: missingEnvMessage(key) },
+        { status: 500 },
+      );
+    }
+  }
+
+  return null;
+}
+
 export function jsonError(error: unknown) {
   if (error instanceof ApiError) {
     return NextResponse.json({ message: error.message }, { status: error.status });
